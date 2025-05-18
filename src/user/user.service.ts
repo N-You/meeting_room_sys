@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { RedisService } from 'src/redis/redis.service';
 import { md5 } from 'src/utils';
@@ -41,6 +41,46 @@ export class UserService {
 
   @Inject(ConfigService)
   private configService: ConfigService;
+
+  async initData() {
+    const user1 = new User();
+    user1.username = 'zhangsan';
+    user1.password = md5('111111');
+    user1.email = 'xxx@xx.com';
+    user1.isAdmin = true;
+    user1.nickName = '张三';
+    user1.phoneNumber = '13233323333';
+
+    const user2 = new User();
+    user2.username = 'lisi';
+    user2.password = md5('222222');
+    user2.email = 'yy@yy.com';
+    user2.nickName = '李四';
+
+    const role1 = new Role();
+    role1.name = '管理员';
+
+    const role2 = new Role();
+    role2.name = '普通用户';
+
+    const permission1 = new Permission();
+    permission1.code = 'ccc';
+    permission1.description = '访问 ccc 接口';
+
+    const permission2 = new Permission();
+    permission2.code = 'ddd';
+    permission2.description = '访问 ddd 接口';
+
+    user1.roles = [role1];
+    user2.roles = [role2];
+
+    role1.permissions = [permission1, permission2];
+    role2.permissions = [permission1];
+
+    await this.permissionRepository.save([permission1, permission2]);
+    await this.roleRepository.save([role1, role2]);
+    await this.userRepository.save([user1, user2]);
+  }
 
   async register(user: RegisterUserDto) {
     const captcha = await this.redisService.get(`captcha_${user.email}`);
@@ -235,5 +275,58 @@ export class UserService {
       this.logger.error(e, UserService);
       return '用户信息修改成功';
     }
+  }
+
+  async freezeUserById(userId: number) {
+    const user = await this.userRepository.findOneBy({
+      id: userId,
+    });
+
+    user.isFrozen = true;
+
+    await this.userRepository.save(user);
+  }
+
+  async findUsers(
+    username: string,
+    nickName: string,
+    email: string,
+    pageNo: number,
+    pageSize: number,
+  ) {
+    const skipCount = (pageNo - 1) * pageSize;
+
+    const condition: Record<string, any> = {};
+
+    if (username) {
+      condition.username = Like(`%${username}%`);
+    }
+    if (nickName) {
+      condition.nickName = Like(`%${nickName}%`);
+    }
+    if (email) {
+      condition.email = Like(`%${email}%`);
+    }
+
+    const [users, totalCount] = await this.userRepository.findAndCount({
+      select: [
+        'id',
+        'username',
+        'nickName',
+        'email',
+        'phoneNumber',
+        'isFrozen',
+        'headPic',
+        'createTime',
+      ],
+      skip: skipCount,
+      take: pageSize,
+      where: condition,
+    });
+
+    return {
+      users,
+      totalCount,
+    };
   }
 }
