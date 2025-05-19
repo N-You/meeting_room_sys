@@ -27,6 +27,8 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
+  app.enableCors();
+
   await app.listen(configService.get('nest_server_port'));
 }
 bootstrap();

@@ -69,12 +69,48 @@ export class UserController {
   @Post('login')
   async login(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, false);
+
+    vo.accessToken = this.jwtService.sign({
+      userId: vo.userInfo.id,
+      username: vo.userInfo.username,
+      email: vo.userInfo.email,
+      roles: vo.userInfo.roles,
+      permissions: vo.userInfo.permissions,
+    });
+
+    vo.refreshToken = this.jwtService.sign(
+      {
+        userId: vo.userInfo.id,
+      },
+      {
+        expiresIn: this.configService.get('jwt_refresh_token_expres_time'),
+      },
+    );
+
     return vo;
   }
 
   @Post('admin/login')
   async adminLogin(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, true);
+
+    vo.accessToken = this.jwtService.sign({
+      userId: vo.userInfo.id,
+      username: vo.userInfo.username,
+      email: vo.userInfo.email,
+      roles: vo.userInfo.roles,
+      permissions: vo.userInfo.permissions,
+    });
+
+    vo.refreshToken = this.jwtService.sign(
+      {
+        userId: vo.userInfo.id,
+      },
+      {
+        expiresIn: this.configService.get('jwt_refresh_token_expres_time'),
+      },
+    );
+
     return vo;
   }
 
@@ -89,6 +125,7 @@ export class UserController {
         {
           userId: user.id,
           username: user.username,
+          email: user.email,
           roles: user.roles,
           permissions: user.permissions,
         },
@@ -128,6 +165,7 @@ export class UserController {
         {
           userId: user.id,
           username: user.username,
+          email: user.email,
           roles: user.roles,
           permissions: user.permissions,
         },
@@ -176,12 +214,8 @@ export class UserController {
   }
 
   @Post(['update_password', 'admin/update_password'])
-  @RequireLogin()
-  async updatePassword(
-    @UserInfo('userId') userId: number,
-    @Body() passwordDto: UpdateUserPasswordDto,
-  ) {
-    return await this.userService.updatePassword(userId, passwordDto);
+  async updatePassword(@Body() passwordDto: UpdateUserPasswordDto) {
+    return await this.userService.updatePassword(passwordDto);
   }
 
   @Get('update_password/captcha')
@@ -213,7 +247,8 @@ export class UserController {
   }
 
   @Get('update/captcha')
-  async updateCaptcha(@Query('address') address: string) {
+  @RequireLogin()
+  async updateCaptcha(@UserInfo('email') address: string) {
     const code = Math.random().toString().slice(2, 8);
 
     await this.redisService.set(
@@ -239,6 +274,7 @@ export class UserController {
   }
 
   @Get('list')
+  @RequireLogin()
   async list(
     @Query('pageNo', new DefaultValuePipe(1), generateParseIntPipe('pageNo'))
     pageNo: number,
