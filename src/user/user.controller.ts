@@ -12,6 +12,8 @@ import {
   ParseIntPipe,
   BadRequestException,
   DefaultValuePipe,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -25,6 +27,9 @@ import { UserDetailVo } from './vo/user-info.vo';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { generateParseIntPipe } from 'src/utils';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { storage } from 'src/my-file-storage';
+import { extname } from 'path';
 
 @Controller('user')
 export class UserController {
@@ -115,7 +120,7 @@ export class UserController {
   }
 
   @Get('refresh')
-  async refresh(@Query('refreshToken') refreshToken: string) {
+  async refresh(@Query('refresh_token') refreshToken: string) {
     try {
       const data = this.jwtService.verify(refreshToken);
 
@@ -155,7 +160,7 @@ export class UserController {
   }
 
   @Get('admin/refresh')
-  async adminRefresh(@Query('refreshToken') refreshToken: string) {
+  async adminRefresh(@Query('refresh_token') refreshToken: string) {
     try {
       const data = this.jwtService.verify(refreshToken);
 
@@ -295,5 +300,28 @@ export class UserController {
       pageNo,
       pageSize,
     );
+  }
+
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      dest: 'uploads',
+      storage: storage,
+      limits: {
+        fileSize: 1024 * 1024 * 5, // 5MB
+      },
+      fileFilter: (req, file, cb) => {
+        const fileExt = extname(file.originalname);
+        if (['.png', '.jpg', '.gif'].includes(fileExt)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('只能上传图片'), false);
+        }
+      },
+    }),
+  )
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    console.log('🚀 ~ UserController ~ uploadFile ~ file:', file);
+    return file.path;
   }
 }
