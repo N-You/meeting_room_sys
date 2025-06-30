@@ -32,36 +32,41 @@ export class MeetingRoomService {
     this.repository.save([room1, room2, room3]);
   }
 
-async find(pageNo: number, pageSize: number, name: string, capacity: number, equipment: string) {
-    if(pageNo < 1) {
+  async find(
+    pageNo: number,
+    pageSize: number,
+    name: string,
+    capacity: number,
+    equipment: string,
+  ) {
+    if (pageNo < 1) {
       throw new BadRequestException('页码最小为 1');
     }
     const skipCount = (pageNo - 1) * pageSize;
 
     const condition: Record<string, any> = {};
 
-    if(name) {
-        condition.name = Like(`%${name}%`);   
+    if (name) {
+      condition.name = Like(`%${name}%`);
     }
-    if(equipment) {
-        condition.equipment = Like(`%${equipment}%`); 
+    if (equipment) {
+      condition.equipment = Like(`%${equipment}%`);
     }
-    if(capacity) {
-        condition.capacity = capacity;
+    if (capacity) {
+      condition.capacity = capacity;
     }
 
     const [meetingRooms, totalCount] = await this.repository.findAndCount({
-        skip: skipCount,
-        take: pageSize,
-        where: condition
+      skip: skipCount,
+      take: pageSize,
+      where: condition,
     });
 
     return {
-        meetingRooms,
-        totalCount
-    }
-}
-
+      meetingRooms,
+      totalCount,
+    };
+  }
 
   async create(meetingRoomDto: CreateMeetingRoomDto) {
     const room = await this.repository.findOneBy({
