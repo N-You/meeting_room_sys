@@ -51,7 +51,7 @@ export class MeetingRoomController {
     return await this.meetingRoomService.create(meetingRoomDto);
   }
 
-  @Put('updata')
+  @Put('update')
   async update(@Body() meetingRoomDto: UpdateMeetingRoomDto) {
     return await this.meetingRoomService.update(meetingRoomDto);
   }
